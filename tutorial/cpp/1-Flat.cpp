@@ -10,6 +10,9 @@
 
 #include <faiss/IndexFlat.h>
 
+#ifdef _WIN32
+#include "win_rand.h"
+#endif
 
 int main() {
     int d = 64;                            // dimension
@@ -39,7 +42,7 @@ int main() {
     int k = 4;
 
     {       // sanity check: search 5 first vectors of xb
-        long *I = new long[k * 5];
+        faiss::Index::idx_t *I = new faiss::Index::idx_t[k * 5];
         float *D = new float[k * 5];
 
         index.search(5, xb, k, D, I);
@@ -65,7 +68,7 @@ int main() {
 
 
     {       // search xq
-        long *I = new long[k * nq];
+        faiss::Index::idx_t *I = new faiss::Index::idx_t[k * nq];
         float *D = new float[k * nq];
 
         index.search(nq, xq, k, D, I);

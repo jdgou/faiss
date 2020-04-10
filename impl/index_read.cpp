@@ -12,7 +12,9 @@
 #include <cstdio>
 #include <cstdlib>
 
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -223,6 +225,9 @@ InvertedLists *read_InvertedLists (IOReader *f, int io_flags) {
         }
         return ails;
     } else if (h == fourcc ("ilar") && (io_flags & IO_FLAG_MMAP)) {
+#ifdef _WIN32
+        FAISS_THROW_MSG("mmap not supported for windows");
+#else
         // then we load it as an OnDiskInvertedLists
 
         FileIOReader *reader = dynamic_cast<FileIOReader*>(f);
@@ -262,6 +267,7 @@ InvertedLists *read_InvertedLists (IOReader *f, int io_flags) {
         // resume normal reading of file
         fseek (fdesc, o, SEEK_SET);
         return ails;
+#endif
     } else if (h == fourcc ("ilod")) {
         OnDiskInvertedLists *od = new OnDiskInvertedLists();
         od->read_only = io_flags & IO_FLAG_READ_ONLY;

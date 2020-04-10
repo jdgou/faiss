@@ -12,6 +12,9 @@
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexIVFFlat.h>
 
+#ifdef _WIN32
+#include "win_rand.h"
+#endif
 
 int main() {
     int d = 64;                            // dimension
@@ -46,7 +49,7 @@ int main() {
     index.add(nb, xb);
 
     {       // search xq
-        long *I = new long[k * nq];
+        faiss::Index::idx_t *I = new faiss::Index::idx_t[k * nq];
         float *D = new float[k * nq];
 
         index.search(nq, xq, k, D, I);

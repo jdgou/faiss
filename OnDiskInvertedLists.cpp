@@ -13,7 +13,9 @@
 
 #include <unordered_set>
 
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -271,6 +273,9 @@ void OnDiskInvertedLists::prefetch_lists (const idx_t *list_nos, int n) const
 
 void OnDiskInvertedLists::do_mmap ()
 {
+#ifdef _WIN32
+    FAISS_THROW_MSG ("mmap not supported on windows");
+#else
     const char *rw_flags = read_only ? "r" : "r+";
     int prot = read_only ? PROT_READ : PROT_WRITE | PROT_READ;
     FILE *f = fopen (filename.c_str(), rw_flags);
@@ -286,12 +291,16 @@ void OnDiskInvertedLists::do_mmap ()
                             strerror(errno));
     ptr = ptro;
     fclose (f);
+#endif
 
 }
 
 void OnDiskInvertedLists::update_totsize (size_t new_size)
 {
 
+#ifdef _WIN32
+    FAISS_THROW_MSG ("mmap not supported for windows");
+#else
     // unmap file
     if (ptr != nullptr) {
         int err = munmap (ptr, totsize);
@@ -328,6 +337,7 @@ void OnDiskInvertedLists::update_totsize (size_t new_size)
                             filename.c_str(), totsize,
                             strerror(errno));
     do_mmap ();
+#endif
 }
 
 
@@ -381,6 +391,7 @@ OnDiskInvertedLists::~OnDiskInvertedLists ()
 {
     delete pf;
 
+#ifndef _WIN32
     // unmap all lists
     if (ptr != nullptr) {
         int err = munmap (ptr, totsize);
@@ -389,6 +400,7 @@ OnDiskInvertedLists::~OnDiskInvertedLists ()
                     strerror(errno));
         }
     }
+#endif
     delete locks;
 }
 
