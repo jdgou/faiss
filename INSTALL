@@ -1,3 +1,54 @@
+# CMake Support
+
+Faiss does not support cmake until [#75](https://github.com/facebookresearch/faiss/pull/75).
+However, this is removed as ["we're removing official CMake support, as we aim to provide only one build system"][1].
+A [fork](https://github.com/hlzz/faiss) is maintained by hlzz, which seems dead after Nov 2018.
+Now we have [jdgou/faiss](https://github.com/jdgou/faiss)
+
+[1]: https://github.com/facebookresearch/faiss/pull/645#issuecomment-441256376
+
+## TL;DR
+
+```sh
+mkdir build
+cd build
+cmake .. -DBUILD_WITH_GPU=OFF
+make -j$(nproc)
+ctest -V
+```
+
+## Archtecture detection
+
+Hlzz hardcoded `CXXFLAGS`.
+However, there is [a nicer way](https://stackoverflow.com/questions/6901369/how-to-detect-sse-availability-in-cmake).
+
+## Shared vs Static
+
+Cmake seems has bad supports on this.
+See [this on SOF](https://stackoverflow.com/questions/2152077/is-it-possible-to-get-cmake-to-build-both-a-static-and-shared-version-of-the-sam).
+
+BTW, the static libarary is faily enough for development and testing.
+
+## Google Test
+
+According to [cmake official docs](https://cmake.org/cmake/help/latest/module/FindGTest.html),
+one sets `find_package(GTest REQUIRED)` to use gtest.
+
+On Ubuntu, `libgtest-dev` contains src *only*.
+Thus one must compile and install gtest libraries manually.
+See [this][1] and [this][2].
+
+[1]: https://stackoverflow.com/questions/24295876/cmake-cannot-find-googletest-required-library-in-ubuntu
+[2]: https://stackoverflow.com/questions/17469843/cmake-cannot-find-a-required-library
+
+However, others suggest to [use `ExternalProject`][3], as "this is an unsual case".
+Kaizouman gives a [subtle example][4] as well as [a detailed explanation of how it works][4].
+
+[3]: https://stackoverflow.com/questions/9689183/cmake-googletest
+[4]: https://github.com/kaizouman/gtest-cmake-example
+[5]: http://www.kaizou.org/2014/11/gtest-cmake.html
+
+## Original Content of INSTALL
 
 **********************************************************
 ** INSTALL file for Faiss (Fair AI Similarity Search).  **

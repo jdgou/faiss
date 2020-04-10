@@ -26,9 +26,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # specify header and cpp files
 file(GLOB faiss_cpu_headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-file(GLOB faiss_cpu_cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+file(GLOB faiss_cpu_cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/impl/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/utils/*.cpp)
 
 set(faiss_lib faiss)
+include_directories(${CMAKE_SOURCE_DIR})
 add_library(${faiss_lib} STATIC ${faiss_cpu_headers} ${faiss_cpu_cpp})
 target_link_libraries(${faiss_lib} ${OpenMP_CXX_FLAGS} ${OpenBLAS_LIB})
 
@@ -45,5 +49,6 @@ endif(BUILD_TUTORIAL)
 
 # build tests
 if(BUILD_TEST)
+    enable_testing()
     add_subdirectory(tests)
 endif(BUILD_TEST)

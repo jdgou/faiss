@@ -14,6 +14,6 @@ foreach(source ${srcs})
     add_executable(${name} ${source})
     target_link_libraries(${name} ${faiss_lib} ${OpenBLAS_LIB} ${GTEST_BOTH_LIBRARIES})
 
-    # Install
-    install(TARGETS ${name} DESTINATION test)
+    # test
+    gtest_discover_tests(${name})
 endforeach(source)
