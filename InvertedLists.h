@@ -56,6 +56,8 @@ struct InvertedLists {
      */
     virtual const idx_t * get_ids (size_t list_no) const = 0;
 
+    virtual const int * get_attrs (size_t list_no) const {}
+
     /// release codes returned by get_codes (default implementation is nop
     virtual void release_codes (size_t list_no, const uint8_t *codes) const;
 
@@ -84,6 +86,10 @@ struct InvertedLists {
     virtual size_t add_entries (
            size_t list_no, size_t n_entry,
            const idx_t* ids, const uint8_t *code) = 0;
+
+    virtual size_t add_attr (
+            size_t list_no, size_t n_entry,
+            const idx_t* ids, const int *attrs) {}
 
     virtual void update_entry (size_t list_no, size_t offset,
                                idx_t id, const uint8_t *code);
@@ -182,16 +188,22 @@ struct InvertedLists {
 struct ArrayInvertedLists: InvertedLists {
     std::vector < std::vector<uint8_t> > codes; // binary codes, size nlist
     std::vector < std::vector<idx_t> > ids;  ///< Inverted lists for indexes
+    std::vector < std::vector<int> > attrs;
 
     ArrayInvertedLists (size_t nlist, size_t code_size);
 
     size_t list_size(size_t list_no) const override;
     const uint8_t * get_codes (size_t list_no) const override;
     const idx_t * get_ids (size_t list_no) const override;
+    const int * get_attrs (size_t list_no) const override;
 
     size_t add_entries (
            size_t list_no, size_t n_entry,
            const idx_t* ids, const uint8_t *code) override;
+
+    size_t add_attr (
+           size_t list_no, size_t n_entry,
+           const idx_t* ids, const int *code) override;
 
     void update_entries (size_t list_no, size_t offset, size_t n_entry,
                          const idx_t *ids, const uint8_t *code) override;

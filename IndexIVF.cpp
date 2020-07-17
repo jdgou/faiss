@@ -370,7 +370,10 @@ void IndexIVF::search_preassigned (idx_t n, const float *x, idx_t k,
                 ids = sids->get();
             }
 
-            nheap += scanner->scan_codes (list_size, scodes.get(),
+            // nheap += scanner->scan_codes (list_size, scodes.get(),
+            //                               ids, simi, idxi, k);
+
+            nheap += scanner->scan_codes_with_filter (list_size, invlists->get_attrs(key), scodes.get(),
                                           ids, simi, idxi, k);
 
             return list_size;
