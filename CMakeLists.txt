@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 2.8.7)
 project(faiss C CXX)
 
 option(BUILD_TUTORIAL "Build tutorials" ON)
-option(BUILD_TEST "Build tests" ON)
-option(BUILD_WITH_GPU "Build faiss with gpu (cuda) support" ON)
+option(BUILD_TEST "Build tests" OFF)
+option(BUILD_WITH_GPU "Build faiss with gpu (cuda) support" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
@@ -16,7 +16,7 @@ find_package(OpenMP REQUIRED)
 find_package(OpenBLAS REQUIRED)
 include_directories(${OpenBLAS_INCLUDE_DIR})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC -m64 -Wall -g -O3  -msse4 -mpopcnt -fopenmp -Wno-sign-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -fPIC -m64 -Wall -g -O3  -msse4 -mpopcnt -fopenmp -Wno-sign-compare")
 add_definitions(-DFINTEGER=int)
 
 # specify output bin_path and lib_path
@@ -29,6 +29,7 @@ file(GLOB faiss_cpu_headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB faiss_cpu_cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/impl/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/extra/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/utils/*.cpp)
 
 set(faiss_lib faiss)

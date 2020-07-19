@@ -335,14 +335,6 @@ struct InvertedListScanner {
                                float *distances, idx_t *labels,
                                size_t k) const = 0;
 
-    virtual size_t scan_codes_with_filter (size_t n,
-                                            const int *attrs,
-                                            const uint8_t *codes,
-                                            const idx_t *ids,
-                                            float *distances,
-                                            idx_t *labels,
-                                            size_t k) const {}
-
     /** scan a set of codes, compute distances to current query and
      * update results if distances are below radius
      *

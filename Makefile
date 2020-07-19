@@ -6,7 +6,7 @@
 -include makefile.inc
 
 HEADERS     = $(wildcard *.h impl/*.h utils/*.h)
-SRC         = $(wildcard *.cpp impl/*.cpp utils/*.cpp)
+SRC         = $(wildcard *.cpp impl/*.cpp utils/*.cpp extra/*.cpp)
 OBJ         = $(SRC:.cpp=.o)
 INSTALLDIRS = $(DESTDIR)$(libdir) $(DESTDIR)$(includedir)/faiss
 

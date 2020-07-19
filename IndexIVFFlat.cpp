@@ -67,10 +67,6 @@ void IndexIVFFlat::add_core (idx_t n, const float * x, const int64_t *xids,
             const float *xi = x + i * d;
             offset = invlists->add_entry (
                      list_no, id, (const uint8_t*) xi);
-
-            int theattr = id;
-            invlists->add_attr(list_no, 1, &id, &theattr);
-
             n_add++;
         } else {
             offset = 0;
@@ -158,34 +154,6 @@ struct IVFFlatScanner: InvertedListScanner {
         const float *list_vecs = (const float*)codes;
         size_t nup = 0;
         for (size_t j = 0; j < list_size; j++) {
-            const float * yj = list_vecs + d * j;
-            float dis = metric == METRIC_INNER_PRODUCT ?
-                fvec_inner_product (xi, yj, d) : fvec_L2sqr (xi, yj, d);
-            if (C::cmp (simi[0], dis)) {
-                heap_pop<C> (k, simi, idxi);
-                int64_t id = store_pairs ? lo_build (list_no, j) : ids[j];
-                heap_push<C> (k, simi, idxi, dis, id);
-                nup++;
-            }
-        }
-        return nup;
-    }
-
-    size_t scan_codes_with_filter (size_t list_size,
-                                   const int *attrs,
-                                   const uint8_t *codes,
-                                   const idx_t *ids,
-                                   float *simi, idx_t *idxi,
-                                   size_t k) const override
-    {
-        const float *list_vecs = (const float*)codes;
-        size_t nup = 0;
-        for (size_t j = 0; j < list_size; j++) {
-
-            // custom filter
-            if (*(attrs + j) % 10 != 0)
-                continue;
-
             const float * yj = list_vecs + d * j;
             float dis = metric == METRIC_INNER_PRODUCT ?
                 fvec_inner_product (xi, yj, d) : fvec_L2sqr (xi, yj, d);

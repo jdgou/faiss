@@ -138,7 +138,6 @@ ArrayInvertedLists::ArrayInvertedLists (size_t nlist, size_t code_size):
 {
     ids.resize (nlist);
     codes.resize (nlist);
-    attrs.resize (nlist);
 }
 
 size_t ArrayInvertedLists::add_entries (
@@ -152,18 +151,6 @@ size_t ArrayInvertedLists::add_entries (
     memcpy (&ids[list_no][o], ids_in, sizeof (ids_in[0]) * n_entry);
     codes [list_no].resize ((o + n_entry) * code_size);
     memcpy (&codes[list_no][o * code_size], code, code_size * n_entry);
-    return o;
-}
-
-size_t ArrayInvertedLists::add_attr (
-            size_t list_no, size_t n_entry,
-            const idx_t* ids_in, const int* attrs_in)
-{
-    if (n_entry == 0) return 0;
-    assert (list_no < nlist);
-    size_t o = ids [list_no].size();
-    attrs [list_no].resize (o);
-    memcpy (&attrs[list_no][o - n_entry], attrs_in, sizeof (int) * n_entry);
     return o;
 }
 
@@ -184,12 +171,6 @@ const InvertedLists::idx_t * ArrayInvertedLists::get_ids (size_t list_no) const
 {
     assert (list_no < nlist);
     return ids[list_no].data();
-}
-
-const int * ArrayInvertedLists::get_attrs (size_t list_no) const
-{
-    assert (list_no < nlist);
-    return attrs[list_no].data();
 }
 
 void ArrayInvertedLists::resize (size_t list_no, size_t new_size)
