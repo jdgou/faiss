@@ -18,9 +18,9 @@
 #include <faiss/IndexFlat.h>
 #include <faiss/impl/AuxIndexStructures.h>
 #include <faiss/IndexIVFFlat.h>
-#include <type_traits>
-#include <faiss/utils/distances.h>
-#include "AttrIndex.h"
+#include <faiss/IndexScalarQuantizer.h>
+#include <faiss/extra/AttrIndex.h>
+#include <faiss/extra/AttrScanner.h>
 
 
 namespace faiss {
@@ -32,20 +32,20 @@ namespace faiss {
             return false;
     }
 
+    // forward declarations
+
+    template<>
+    void AttrIndex<IndexIVFFlat>::add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs);
+
     // IndexIVF
 
-    template<typename Policy>
-    std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-    AttrIndex<Policy>::add_attr(idx_t n, const float *x, const enc_t *a) {
+    template<typename IndexType>
+    void AttrIndex<IndexType>::add_attr(idx_t n, const float *x, const enc_t *a) {
         add_with_ids_attr(n, x, nullptr, a);
     }
 
-    template void
-    AttrIndex<IndexIVFFlat>::add_attr(idx_t n, const float *x, const enc_t *a);
-
-    template<typename Policy>
-    std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-    AttrIndex<Policy>::add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs) {
+    template<typename IndexType>
+    void AttrIndex<IndexType>::add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs) {
         // do some blocking to avoid excessive allocs
         idx_t bs = 65536;
         if (n > bs) {
@@ -109,36 +109,11 @@ namespace faiss {
         this->ntotal += n;
     }
 
-    template<typename Policy>
-    std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-    AttrIndex<Policy>::search_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask,
-                                   float *distances,
-                                   idx_t *labels) const {
-        std::unique_ptr<idx_t[]> idx(new idx_t[n * this->nprobe]);
-        std::unique_ptr<float[]> coarse_dis(new float[n * this->nprobe]);
-
-        double t0 = getmillisecs();
-        this->quantizer->search(n, x, this->nprobe, coarse_dis.get(), idx.get());
-        indexIVF_stats.quantization_time += getmillisecs() - t0;
-
-        t0 = getmillisecs();
-        this->invlists->prefetch_lists(idx.get(), n * this->nprobe);
-
-        this->search_preassigned_attr(n, x, k, query, mask, idx.get(), coarse_dis.get(),
-                                      distances, labels, false);
-        indexIVF_stats.search_time += getmillisecs() - t0;
-    }
-
-    template void
-    AttrIndex<IndexIVFFlat>::search_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask, float *distances,
-                                         idx_t *labels) const;
-
-    template<typename Policy>
-    std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-    AttrIndex<Policy>::search_preassigned_attr(idx_t n, const float *x, idx_t k, enc_t query,
-                                               enc_t mask, const idx_t *keys, const float *coarse_dis,
-                                               float *distances, idx_t *labels, bool store_pairs,
-                                               const IVFSearchParameters *params) const {
+    template<typename IndexType>
+    void AttrIndex<IndexType>::search_preassigned_attr(idx_t n, const float *x, idx_t k, enc_t query,
+                                                       enc_t mask, const idx_t *keys, const float *coarse_dis,
+                                                       float *distances, idx_t *labels, bool store_pairs,
+                                                       const IVFSearchParameters *params) const {
         long nprobe = params ? params->nprobe : this->nprobe;
         long max_codes = params ? params->max_codes : this->max_codes;
 
@@ -336,21 +311,47 @@ namespace faiss {
 
     }
 
+    template<typename IndexType>
+    void AttrIndex<IndexType>::search_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask, float *distances,
+                                           idx_t *labels) const {
+        std::unique_ptr<idx_t[]> idx(new idx_t[n * this->nprobe]);
+        std::unique_ptr<float[]> coarse_dis(new float[n * this->nprobe]);
+
+        double t0 = getmillisecs();
+        this->quantizer->search(n, x, this->nprobe, coarse_dis.get(), idx.get());
+        indexIVF_stats.quantization_time += getmillisecs() - t0;
+
+        t0 = getmillisecs();
+        this->invlists->prefetch_lists(idx.get(), n * this->nprobe);
+
+        this->search_preassigned_attr(n, x, k, query, mask, idx.get(), coarse_dis.get(),
+                                      distances, labels, false);
+        indexIVF_stats.search_time += getmillisecs() - t0;
+    }
+
+    template void
+    AttrIndex<IndexIVF>::search_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask, float *distances,
+                                     idx_t *labels) const;
+
+    template<typename IndexType>
+    InvertedListScanner *AttrIndex<IndexType>::get_InvertedListScanner(bool store_pairs) const {
+        return nullptr;
+    }
+
     // IndexIVFFlat
 
-    template<typename Policy>
-    AttrIndex<Policy>::AttrIndex(
+    template<>
+    AttrIndex<IndexIVFFlat>::AttrIndex(
             Index *quantizer, size_t d, size_t nlist_,
-            MetricType metric) : Policy(quantizer, d, nlist_, metric) {
+            MetricType metric) : IndexIVFFlat(quantizer, d, nlist_, metric) {
         this->invlists = new AttrArrayInvertedLists(this->nlist, this->code_size);
     }
 
-    template AttrIndex<IndexIVFFlat>::AttrIndex(Index *quantizer, size_t d, size_t nlist_, MetricType metric);
+    template void AttrIndex<IndexIVFFlat>::add_attr(idx_t n, const float *x, const enc_t *a);
 
-    template<typename Policy>
-    std::enable_if_t<std::is_base_of<IndexIVFFlat, Policy>::value, void>
-    AttrIndex<Policy>::add_core_attr(idx_t n, const enc_t *attrs, const float *x, const idx_t *xids,
-                                     const int64_t *precomputed_idx) {
+    template<>
+    void AttrIndex<IndexIVFFlat>::add_core_attr(idx_t n, const enc_t *attrs, const float *x, const idx_t *xids,
+                                                const int64_t *precomputed_idx) {
         FAISS_THROW_IF_NOT (this->is_trained);
         assert (this->invlists);
         this->direct_map.check_can_add(xids);
@@ -373,8 +374,8 @@ namespace faiss {
 
             if (list_no >= 0) {
                 const float *xi = x + i * this->d;
-                offset = this->invlists->add_entry(
-                        list_no, id, (const uint8_t *) xi);
+                offset = dynamic_cast<AttrArrayInvertedLists *>(this->invlists)->add_entry_attr(
+                        list_no, id, (const uint8_t *) xi, *(attrs + i));
                 n_add++;
             } else {
                 offset = 0;
@@ -389,118 +390,18 @@ namespace faiss {
         this->ntotal += n;
     }
 
-    namespace {
-        template<MetricType metric, class C>
-        struct AttrIVFFlatScanner : AttrInvertedListScanner {
+    template<>
+    void AttrIndex<IndexIVFFlat>::add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs) {
+        add_core_attr(n, attrs, x, xids, nullptr);
+    }
 
-            // new field
-            const enc_t *attr;
-            const enc_t *mask;
-
-            size_t d;
-            bool store_pairs;
-
-            AttrIVFFlatScanner(size_t d, bool store_pairs) :
-                    d(d), store_pairs(store_pairs) {}
-
-            const float *xi;
-
-            void set_query(const float *query) override {
-                this->xi = query;
-            }
-
-            void set_query_and_mask(const enc_t *query, const enc_t *mask_) override {
-                this->attr = query;
-                this->mask = mask_;
-            }
-
-            // n
-
-            idx_t list_no;
-
-            void set_list(idx_t list_no, float /* coarse_dis */) override {
-                this->list_no = list_no;
-            }
-
-            float distance_to_code(const uint8_t *code) const override {
-                const float *yj = (float *) code;
-                float dis = metric == METRIC_INNER_PRODUCT ?
-                            fvec_inner_product(xi, yj, d) : fvec_L2sqr(xi, yj, d);
-                return dis;
-            }
-
-            size_t scan_codes(size_t list_size,
-                              const uint8_t *codes,
-                              const idx_t *ids,
-                              float *simi, idx_t *idxi,
-                              size_t k) const override {
-                const float *list_vecs = (const float *) codes;
-                size_t nup = 0;
-                for (size_t j = 0; j < list_size; j++) {
-                    const float *yj = list_vecs + d * j;
-                    float dis = metric == METRIC_INNER_PRODUCT ?
-                                fvec_inner_product(xi, yj, d) : fvec_L2sqr(xi, yj, d);
-                    if (C::cmp(simi[0], dis)) {
-                        heap_pop<C>(k, simi, idxi);
-                        int64_t id = store_pairs ? lo_build(list_no, j) : ids[j];
-                        heap_push<C>(k, simi, idxi, dis, id);
-                        nup++;
-                    }
-                }
-                return nup;
-            }
-
-            size_t scan_codes_with_filter(size_t list_size,
-                                          const enc_t *attrs,
-                                          const uint8_t *codes,
-                                          const idx_t *ids,
-                                          float *simi, idx_t *idxi,
-                                          size_t k) const override {
-                const float *list_vecs = (const float *) codes;
-                size_t nup = 0;
-                for (size_t j = 0; j < list_size; j++) {
-                    if (not check_attr(attr, mask, attrs + j)) {
-                        continue;
-                    }
-                    const float *yj = list_vecs + d * j;
-                    float dis = metric == METRIC_INNER_PRODUCT ?
-                                fvec_inner_product(xi, yj, d) : fvec_L2sqr(xi, yj, d);
-                    if (C::cmp(simi[0], dis)) {
-                        heap_pop<C>(k, simi, idxi);
-                        int64_t id = store_pairs ? lo_build(list_no, j) : ids[j];
-                        heap_push<C>(k, simi, idxi, dis, id);
-                        nup++;
-                    }
-                }
-                return nup;
-            }
-
-            void scan_codes_range(size_t list_size,
-                                  const uint8_t *codes,
-                                  const idx_t *ids,
-                                  float radius,
-                                  RangeQueryResult &res) const override {
-                const float *list_vecs = (const float *) codes;
-                for (size_t j = 0; j < list_size; j++) {
-                    const float *yj = list_vecs + d * j;
-                    float dis = metric == METRIC_INNER_PRODUCT ?
-                                fvec_inner_product(xi, yj, d) : fvec_L2sqr(xi, yj, d);
-                    if (C::cmp(radius, dis)) {
-                        int64_t id = store_pairs ? lo_build(list_no, j) : ids[j];
-                        res.add(dis, id);
-                    }
-                }
-            }
+    template void
+    AttrIndex<IndexIVFFlat>::search_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask, float *distances,
+                                         idx_t *labels) const;
 
 
-        };
-
-
-    } // anonymous namespace
-
-    template<typename Policy>
-    std::enable_if_t<std::is_base_of<IndexIVFFlat, Policy>::value, InvertedListScanner *>
-    AttrIndex<Policy>::get_InvertedListScanner(bool store_pairs) const {
+    template<>
+    InvertedListScanner *AttrIndex<IndexIVFFlat>::get_InvertedListScanner(bool store_pairs) const {
         if (this->metric_type == METRIC_INNER_PRODUCT) {
             return new AttrIVFFlatScanner<
                     METRIC_INNER_PRODUCT, CMin<float, int64_t> >(this->d, store_pairs);
@@ -511,7 +412,71 @@ namespace faiss {
             FAISS_THROW_MSG("metric type not supported");
         }
         return nullptr;
+    }
 
+    // IndexIVFSQ
+
+    template<>
+    AttrIndex<IndexIVFScalarQuantizer>::AttrIndex(
+            Index *quantizer, size_t d, size_t nlist, ScalarQuantizer::QuantizerType qtype, MetricType metric,
+            bool encode_residual): IndexIVFScalarQuantizer(quantizer, d, nlist, qtype, metric, encode_residual) {
+        this->invlists = new AttrArrayInvertedLists(this->nlist, this->code_size);
+    }
+
+    template<>
+    void AttrIndex<IndexIVFScalarQuantizer>::add_with_ids_attr(idx_t n, const float *x, const idx_t *xids,
+                                                               const enc_t *attrs) {
+        FAISS_THROW_IF_NOT (is_trained);
+        std::unique_ptr<int64_t[]> idx(new int64_t[n]);
+        quantizer->assign(n, x, idx.get());
+        size_t nadd = 0;
+        std::unique_ptr<ScalarQuantizer::Quantizer> squant(sq.select_quantizer());
+
+        DirectMapAdd dm_add(direct_map, n, xids);
+
+#pragma omp parallel reduction(+: nadd)
+        {
+            std::vector<float> residual(d);
+            std::vector<uint8_t> one_code(code_size);
+            int nt = omp_get_num_threads();
+            int rank = omp_get_thread_num();
+
+            // each thread takes care of a subset of lists
+            for (size_t i = 0; i < n; i++) {
+                int64_t list_no = idx[i];
+                if (list_no >= 0 && list_no % nt == rank) {
+                    int64_t id = xids ? xids[i] : ntotal + i;
+
+                    const float *xi = x + i * d;
+                    if (by_residual) {
+                        quantizer->compute_residual(xi, residual.data(), list_no);
+                        xi = residual.data();
+                    }
+
+                    memset(one_code.data(), 0, code_size);
+                    squant->encode_vector(xi, one_code.data());
+
+                    size_t ofs = dynamic_cast<AttrArrayInvertedLists *>(invlists)->add_entry_attr(list_no, id,
+                                                                                                  one_code.data(),
+                                                                                                  attrs[i]);
+
+                    dm_add.add(i, list_no, ofs);
+                    nadd++;
+
+                } else if (rank == 0 && list_no == -1) {
+                    dm_add.add(i, -1, 0);
+                }
+            }
+        }
+
+
+        ntotal += n;
+    }
+
+    template<>
+    InvertedListScanner *AttrIndex<IndexIVFScalarQuantizer>::get_InvertedListScanner(bool store_pairs) const {
+        return sq.select_InvertedListScanner(metric_type, quantizer, store_pairs,
+                                             by_residual);
     }
 
     // inv impl
@@ -541,7 +506,6 @@ namespace faiss {
         assert (list_no < nlist);
         return attrs[list_no].data();
     }
-
 
     void AttrArrayInvertedLists::release_attrs(size_t list_no, const enc_t *attrs) const {}
 
@@ -605,4 +569,5 @@ namespace faiss {
     }
 
     AttrArrayInvertedLists::~AttrArrayInvertedLists() = default;
+
 }

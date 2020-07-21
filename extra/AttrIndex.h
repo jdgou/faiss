@@ -8,6 +8,7 @@
 #include <string>
 #include <faiss/IndexIVF.h>
 #include <faiss/IndexIVFFlat.h>
+#include <faiss/impl/ScalarQuantizer.h>
 
 namespace faiss {
 
@@ -17,62 +18,62 @@ namespace faiss {
 
     inline bool check_attr(const enc_t *query, const enc_t *mask, const enc_t *attr);
 
-    template<typename Policy>
-    struct AttrIndex : public Policy {
+    template<typename IndexType>
+    struct AttrIndex : public IndexType {
 
         // Index
 
-//        std::enable_if_t<std::is_base_of<Index, Policy>::value, void> add_attr(idx_t n, const float *x, const enc_t *a) = 0;
+        void add_attr(idx_t n, const float *x, const enc_t *a);
 
-//        std::enable_if_t<std::is_base_of<Index, Policy>::value, void>
-//        add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs);
+        void add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs);
 
-//        std::enable_if_t<std::is_base_of<Index, Policy>::value, void>
-//        search_attr(idx_t n, const float *x, idx_t k, enc_t q, enc_t mask,
-//                    float *distances, idx_t *labels) const = 0;
+        void search_attr(idx_t n, const float *x, idx_t k, enc_t q, enc_t mask,
+                         float *distances, idx_t *labels) const;
 
-        std::enable_if_t<std::is_base_of<Index, Policy>::value, void>
-        assign_attr(idx_t n, const float *x, idx_t *labels, idx_t k = 1, enc_t q = 0, enc_t mask = 0) {}
+        void range_search_attr(idx_t n, const float *x, float radius, enc_t q, enc_t mask,
+                               RangeSearchResult *result) const;
+
+        void assign_attr(idx_t n, const float *x, idx_t *labels, idx_t k = 1, enc_t q = 0, enc_t mask = 0) const;
 
         // IndexIVF
 
-        std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-        add_attr(idx_t n, const float *x, const enc_t *a);
-
-        std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-        add_with_ids_attr(idx_t n, const float *x, const idx_t *xids, const enc_t *attrs);
-
-        std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-        search_preassigned_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask,
-                                const idx_t *assign,
-                                const float *centroid_dis,
-                                float *distances, idx_t *labels,
-                                bool store_pairs,
-                                const IVFSearchParameters *params = nullptr
+        void search_preassigned_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask,
+                                     const idx_t *assign,
+                                     const float *centroid_dis,
+                                     float *distances, idx_t *labels,
+                                     bool store_pairs,
+                                     const IVFSearchParameters *params = nullptr
         ) const;
 
-        std::enable_if_t<std::is_base_of<IndexIVF, Policy>::value, void>
-        search_attr(idx_t n, const float *x, idx_t k, enc_t query, enc_t mask,
-                    float *distances,
-                    idx_t *labels) const;
+        InvertedListScanner *get_InvertedListScanner(bool store_pairs) const override;
 
         // IndexIVFFlat
 
-        AttrIndex(
-                Index *quantizer, size_t d, size_t nlist_,
-                MetricType = METRIC_L2);
+        AttrIndex(Index *quantizer, size_t d, size_t nlist_, MetricType = METRIC_L2);
 
-        std::enable_if_t<std::is_base_of<IndexIVFFlat, Policy>::value, void>
-        add_core_attr(idx_t n, const enc_t *attrs, const float *x, const idx_t *xids,
-                      const int64_t *precomputed_idx);
+        void add_core_attr(idx_t n, const enc_t *attrs, const float *x, const idx_t *xids,
+                           const int64_t *precomputed_idx);
 
-        std::enable_if_t<std::is_base_of<IndexIVFFlat, Policy>::value, InvertedListScanner *>
-        get_InvertedListScanner(bool store_pairs) const override;
+        // IndexIVFSQ
+
+        AttrIndex(Index *quantizer, size_t d, size_t nlist, ScalarQuantizer::QuantizerType qtype,
+                  MetricType metric = METRIC_L2, bool encode_residual = true);
+
+        // IndexIVFPQ
+
+        AttrIndex();
     };
 
     struct AttrInvertedListScanner : InvertedListScanner {
 
-        virtual void set_query_and_mask(const enc_t *query, const enc_t *mask) = 0;
+        // new field
+        const enc_t *attr;
+        const enc_t *mask;
+
+        void set_query_and_mask(const enc_t *query, const enc_t *mask_) {
+            this->attr = query;
+            this->mask = mask_;
+        }
 
         virtual size_t scan_codes_with_filter(size_t n,
                                               const enc_t *attrs,
@@ -114,7 +115,7 @@ namespace faiss {
                             const idx_t *ids, const uint8_t *code) override;
 
         void update_entries_attr(size_t list_no, size_t offset, size_t n_entry,
-                            const idx_t *ids, const uint8_t *code, const enc_t *attrs);
+                                 const idx_t *ids, const uint8_t *code, const enc_t *attrs);
 
         void resize(size_t list_no, size_t new_size) override;
 
