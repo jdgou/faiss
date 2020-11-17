@@ -117,6 +117,7 @@ typedef uint64_t size_t;
 #include <faiss/impl/lattice_Zn.h>
 #include <faiss/IndexLattice.h>
 
+#include <faiss/s/sq.h>
 
 %}
 
@@ -411,6 +412,8 @@ void gpu_sync_all_devices()
 %template(IndexBinaryIDMap) faiss::IndexIDMapTemplate<faiss::IndexBinary>;
 %template(IndexIDMap2) faiss::IndexIDMap2Template<faiss::Index>;
 %template(IndexBinaryIDMap2) faiss::IndexIDMap2Template<faiss::IndexBinary>;
+
+%include  <faiss/s/sq.h>
 
 #ifdef GPU_WRAPPER
 

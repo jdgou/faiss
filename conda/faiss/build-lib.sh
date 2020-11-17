@@ -19,7 +19,7 @@ cmake -B _build_avx2 \
 
 cmake --build _build_avx2 -j $CPU_COUNT
 
-cmake --install _build_avx2 --prefix $PREFIX
+#cmake --install _build_avx2 --prefix $PREFIX
 cmake --install _build_avx2 --prefix _libfaiss_avx2_stage/
 
 
@@ -34,5 +34,5 @@ cmake -B _build_generic \
 
 cmake --build _build_generic -j $CPU_COUNT
 
-cmake --install _build_generic --prefix $PREFIX
+#cmake --install _build_generic --prefix $PREFIX
 cmake --install _build_generic --prefix _libfaiss_stage/
